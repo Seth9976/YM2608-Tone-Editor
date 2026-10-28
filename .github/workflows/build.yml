@@ -2,48 +2,50 @@ name: Build Windows
   
 on:  
   push:  
-    branches: [ main, master ]  
   pull_request:  
   workflow_dispatch:  
   
 jobs:  
   build:  
     runs-on: windows-latest  
+  
     steps:  
       - name: Checkout  
         uses: actions/checkout@v4  
-        with:  
-          submodules: recursive  
   
       - name: Install Qt  
         uses: jurplel/install-qt-action@v4  
         with:  
-          version: '6.5.*'  
-          arch: win64_mingw  
-          modules: qtmultimedia qt5compat  
-          tools: tools_mingw1120_64  
+          version: '6.5.3'  
+          host: 'windows'  
+          target: 'desktop'  
+          arch: 'win64_mingw'  
+          modules: 'qt5compat'  
+          archives: 'qtbase qtmultimedia qt5compat'  
   
-      - name: Build with qmake  
+      - name: Configure with qmake  
+        run: qmake src\YM2608-Tone-Editor.pro -spec win32-g++ "CONFIG+=release"  
+  
+      - name: Build  
+        run: mingw32-make -j%NUMBER_OF_PROCESSORS%  
+  
+      - name: Locate binary and deploy  
         shell: pwsh  
         run: |  
-          $pro = Get-ChildItem -Path . -Recurse -Filter *.pro | Select-Object -First 1; Write-Host "Found pro file: $($pro.FullName)"; $makePath = $null; $found = Get-ChildItem -Path (Split-Path $env:QT_ROOT_DIR -Parent | Split-Path -Parent | Join-Path -ChildPath 'Tools') -Recurse -Filter mingw32-make.exe -ErrorAction SilentlyContinue | Select-Object -First 1; if ($found) { $makePath = $found.FullName } else { $cmd = Get-Command mingw32-make,make -ErrorAction SilentlyContinue | Select-Object -First 1; if ($cmd) { $makePath = $cmd.Source } }; if (-not $makePath) { throw 'mingw32-make not found' }; Write-Host "Using make: $makePath"; Push-Location $pro.DirectoryName; qmake $pro.Name CONFIG+=release; & $makePath -j $env:NUMBER_OF_PROCESSORS; Pop-Location  
+          $exe = Get-ChildItem -Path . -Recurse -Filter YM2608ToneEditor.exe | Select-Object -First 1  
+          if (-not $exe) { Write-Error "YM2608ToneEditor.exe not found"; exit 1 }  
+          Write-Output "Found binary at: $($exe.FullName)"  
+          $dest = "deploy"  
+          New-Item -ItemType Directory -Path $dest -Force | Out-Null  
+          Copy-Item $exe.FullName -Destination $dest  
+          windeployqt --release --no-translations "$dest\YM2608ToneEditor.exe"  
   
-      - name: Locate built executable  
+      - name: Package artifact  
         shell: pwsh  
-        run: |  
-          $exe = Get-ChildItem -Path . -Recurse -Filter YM2608ToneEditor.exe | Select-Object -First 1; if (-not $exe) { throw 'YM2608ToneEditor.exe not found' }; Write-Host "Found exe: $($exe.FullName)"; New-Item -ItemType Directory -Path .\dist -Force | Out-Null; Copy-Item $exe.FullName .\dist\  
-  
-      - name: Deploy Qt dependencies  
-        shell: pwsh  
-        run: |  
-          $exe = Get-ChildItem -Path .\dist -Filter *.exe | Select-Object -First 1; windeployqt --release --no-translations .\dist\$($exe.Name)  
-  
-      - name: Show dist contents  
-        shell: pwsh  
-        run: Get-ChildItem -Path .\dist -Recurse | Select-Object FullName, Length  
+        run: Compress-Archive -Path deploy\* -DestinationPath YM2608ToneEditor-win64.zip  
   
       - name: Upload artifact  
         uses: actions/upload-artifact@v4  
         with:  
           name: YM2608ToneEditor-win64  
-          path: dist/
+          path: YM2608ToneEditor-win64.zip
