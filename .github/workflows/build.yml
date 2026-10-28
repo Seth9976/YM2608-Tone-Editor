@@ -20,20 +20,13 @@ jobs:
         with:  
           version: '6.5.*'  
           arch: win64_mingw  
-          modules: qt5compat  
-          archives: qtbase qtmultimedia qt5compat  
-  
-      - name: Setup MinGW  
-        uses: msys2/setup-msys2@v2  
-        with:  
-          msystem: MINGW64  
-          update: true  
-          install: mingw-w64-x86_64-toolchain  
+          modules: qtmultimedia qt5compat  
+          tools: tools_mingw  
   
       - name: Build with qmake  
         shell: pwsh  
         run: |  
-          $pro = Get-ChildItem -Path . -Recurse -Filter *.pro | Select-Object -First 1; Write-Host "Found pro file: $($pro.FullName)"; Push-Location $pro.DirectoryName; qmake $pro.Name CONFIG+=release; mingw32-make -j $env:NUMBER_OF_PROCESSORS; Pop-Location  
+          $pro = Get-ChildItem -Path . -Recurse -Filter *.pro | Select-Object -First 1; Write-Host "Found pro file: $($pro.FullName)"; $make = Get-ChildItem -Path "D:\a\*\Qt\Tools" -Recurse -Filter mingw32-make.exe -ErrorAction SilentlyContinue | Select-Object -First 1; if (-not $make) { $make = Get-Command mingw32-make -ErrorAction SilentlyContinue }; if (-not $make) { $make = Get-Command make -ErrorAction SilentlyContinue }; Write-Host "Using make: $($make.Source)"; Push-Location $pro.DirectoryName; qmake $pro.Name CONFIG+=release; & $make.Source -j $env:NUMBER_OF_PROCESSORS; Pop-Location  
   
       - name: Locate built executable  
         shell: pwsh  
