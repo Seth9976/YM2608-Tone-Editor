@@ -20,8 +20,7 @@ jobs:
           host: 'windows'  
           target: 'desktop'  
           arch: 'win64_mingw'  
-          modules: 'qt5compat'  
-          archives: 'qtbase qtmultimedia qt5compat'  
+          modules: 'qtmultimedia qt5compat'  
   
       - name: Configure with qmake  
         run: qmake src\YM2608-Tone-Editor.pro -spec win32-g++ "CONFIG+=release"  
@@ -35,10 +34,9 @@ jobs:
           $exe = Get-ChildItem -Path . -Recurse -Filter YM2608ToneEditor.exe | Select-Object -First 1  
           if (-not $exe) { Write-Error "YM2608ToneEditor.exe not found"; exit 1 }  
           Write-Output "Found binary at: $($exe.FullName)"  
-          $dest = "deploy"  
-          New-Item -ItemType Directory -Path $dest -Force | Out-Null  
-          Copy-Item $exe.FullName -Destination $dest  
-          windeployqt --release --no-translations "$dest\YM2608ToneEditor.exe"  
+          New-Item -ItemType Directory -Path deploy -Force | Out-Null  
+          Copy-Item $exe.FullName -Destination deploy  
+          windeployqt --release --no-translations "deploy\YM2608ToneEditor.exe"  
   
       - name: Package artifact  
         shell: pwsh  
