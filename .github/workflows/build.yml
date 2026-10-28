@@ -46,7 +46,6 @@ jobs:
           $qtBin = Split-Path (Get-Command windeployqt).Source -Parent  
           $qtRoot = Split-Path $qtBin -Parent  
           Write-Output "Qt bin: $qtBin"  
-          Write-Output "Qt root: $qtRoot"  
           & (Get-Command windeployqt).Source --release --no-translations "deploy\YM2608ToneEditor.exe"  
           Write-Output "windeployqt exit code: $LASTEXITCODE"  
           Get-ChildItem $qtBin -Filter "Qt6*.dll" | Copy-Item -Destination deploy -Force  
@@ -55,8 +54,11 @@ jobs:
           Write-Output "Found platform plugin at: $($platformPlugin.FullName)"  
           New-Item -ItemType Directory -Path deploy\platforms -Force | Out-Null  
           Copy-Item $platformPlugin.FullName -Destination deploy\platforms -Force  
+          $gxxDir = Split-Path (Get-Command g++).Source -Parent  
+          Write-Output "Compiler dir: $gxxDir"  
+          Get-ChildItem -Path $gxxDir -Include "libstdc++-6.dll","libgcc_s_seh-1.dll","libwinpthread-1.dll" -Recurse | Select-Object -First 10 | ForEach-Object { Write-Output "Bundling runtime: $($_.FullName)"; Copy-Item $_.FullName -Destination deploy -Force }  
           Get-ChildItem -Path deploy -Recurse | Select-Object -ExpandProperty FullName  
-          exit 0  
+          exit 0
   
       - name: Package artifact  
         shell: pwsh  
