@@ -26,7 +26,7 @@ jobs:
         run: qmake src\YM2608-Tone-Editor.pro -spec win32-g++ "CONFIG+=release"  
   
       - name: Build  
-        run: mingw32-make -j$env:NUMBER_OF_PROCESSORS  
+        run: mingw32-make -j4
   
       - name: Locate binary and deploy  
         shell: pwsh  
