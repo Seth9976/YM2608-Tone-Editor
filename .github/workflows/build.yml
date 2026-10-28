@@ -21,17 +21,17 @@ jobs:
           version: '6.5.*'  
           arch: win64_mingw  
           modules: qtmultimedia qt5compat  
-          tools: tools_mingw  
+          tools: tools_mingw1120_64  
   
       - name: Build with qmake  
         shell: pwsh  
         run: |  
-          $pro = Get-ChildItem -Path . -Recurse -Filter *.pro | Select-Object -First 1; Write-Host "Found pro file: $($pro.FullName)"; $make = Get-ChildItem -Path "D:\a\*\Qt\Tools" -Recurse -Filter mingw32-make.exe -ErrorAction SilentlyContinue | Select-Object -First 1; if (-not $make) { $make = Get-Command mingw32-make -ErrorAction SilentlyContinue }; if (-not $make) { $make = Get-Command make -ErrorAction SilentlyContinue }; Write-Host "Using make: $($make.Source)"; Push-Location $pro.DirectoryName; qmake $pro.Name CONFIG+=release; & $make.Source -j $env:NUMBER_OF_PROCESSORS; Pop-Location  
+          $pro = Get-ChildItem -Path . -Recurse -Filter *.pro | Select-Object -First 1; Write-Host "Found pro file: $($pro.FullName)"; $makePath = $null; $found = Get-ChildItem -Path (Split-Path $env:QT_ROOT_DIR -Parent | Split-Path -Parent | Join-Path -ChildPath 'Tools') -Recurse -Filter mingw32-make.exe -ErrorAction SilentlyContinue | Select-Object -First 1; if ($found) { $makePath = $found.FullName } else { $cmd = Get-Command mingw32-make,make -ErrorAction SilentlyContinue | Select-Object -First 1; if ($cmd) { $makePath = $cmd.Source } }; if (-not $makePath) { throw 'mingw32-make not found' }; Write-Host "Using make: $makePath"; Push-Location $pro.DirectoryName; qmake $pro.Name CONFIG+=release; & $makePath -j $env:NUMBER_OF_PROCESSORS; Pop-Location  
   
       - name: Locate built executable  
         shell: pwsh  
         run: |  
-          $exe = Get-ChildItem -Path . -Recurse -Filter YM2608ToneEditor.exe | Select-Object -First 1; Write-Host "Found exe: $($exe.FullName)"; New-Item -ItemType Directory -Path .\dist -Force | Out-Null; Copy-Item $exe.FullName .\dist\  
+          $exe = Get-ChildItem -Path . -Recurse -Filter YM2608ToneEditor.exe | Select-Object -First 1; if (-not $exe) { throw 'YM2608ToneEditor.exe not found' }; Write-Host "Found exe: $($exe.FullName)"; New-Item -ItemType Directory -Path .\dist -Force | Out-Null; Copy-Item $exe.FullName .\dist\  
   
       - name: Deploy Qt dependencies  
         shell: pwsh  
