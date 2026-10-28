@@ -12,6 +12,14 @@ jobs:
     steps:  
       - name: Checkout  
         uses: actions/checkout@v4  
+        with:  
+          submodules: recursive  
+  
+      - name: Ensure emu2149 sources exist  
+        shell: pwsh  
+        run: |  
+          if (-not (Test-Path src\chips\emu2149\emu2149.c)) { Write-Output "emu2149 missing, cloning upstream"; git clone --depth 1 https://github.com/digital-sound-antiques/emu2149.git src\chips\emu2149 }  
+          Get-ChildItem -Path src\chips -Recurse -File | Select-Object -ExpandProperty FullName  
   
       - name: Install Qt  
         uses: jurplel/install-qt-action@v4  
@@ -26,7 +34,7 @@ jobs:
         run: qmake src\YM2608-Tone-Editor.pro -spec win32-g++ "CONFIG+=release"  
   
       - name: Build  
-        run: mingw32-make -j4
+        run: mingw32-make -j4  
   
       - name: Locate binary and deploy  
         shell: pwsh  
