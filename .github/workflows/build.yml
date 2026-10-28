@@ -33,7 +33,24 @@ jobs:
       - name: Build with qmake  
         shell: pwsh  
         run: |  
-          $pro = Get-ChildItem -Path . -Recurse -Filter *.pro | Select-Object -First 1; Write-Host "Found pro file: $($pro.FullName)"; Push-Location $pro.DirectoryNam
-
-
-
+          $pro = Get-ChildItem -Path . -Recurse -Filter *.pro | Select-Object -First 1; Write-Host "Found pro file: $($pro.FullName)"; Push-Location $pro.DirectoryName; qmake $pro.Name CONFIG+=release; mingw32-make -j $env:NUMBER_OF_PROCESSORS; Pop-Location  
+  
+      - name: Locate built executable  
+        shell: pwsh  
+        run: |  
+          $exe = Get-ChildItem -Path . -Recurse -Filter YM2608ToneEditor.exe | Select-Object -First 1; Write-Host "Found exe: $($exe.FullName)"; New-Item -ItemType Directory -Path .\dist -Force | Out-Null; Copy-Item $exe.FullName .\dist\  
+  
+      - name: Deploy Qt dependencies  
+        shell: pwsh  
+        run: |  
+          $exe = Get-ChildItem -Path .\dist -Filter *.exe | Select-Object -First 1; windeployqt --release --no-translations .\dist\$($exe.Name)  
+  
+      - name: Show dist contents  
+        shell: pwsh  
+        run: Get-ChildItem -Path .\dist -Recurse | Select-Object FullName, Length  
+  
+      - name: Upload artifact  
+        uses: actions/upload-artifact@v4  
+        with:  
+          name: YM2608ToneEditor-win64  
+          path: dist/
