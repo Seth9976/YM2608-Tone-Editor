@@ -19,7 +19,6 @@ jobs:
         shell: pwsh  
         run: |  
           if (-not (Test-Path src\chips\emu2149\emu2149.c)) { Write-Output "emu2149 missing, cloning upstream"; git clone --depth 1 https://github.com/digital-sound-antiques/emu2149.git src\chips\emu2149 }  
-          Get-ChildItem -Path src\chips -Recurse -File | Select-Object -ExpandProperty FullName  
   
       - name: Install Qt  
         uses: jurplel/install-qt-action@v4  
@@ -42,11 +41,22 @@ jobs:
           $exe = Get-ChildItem -Path . -Recurse -Filter YM2608ToneEditor.exe | Select-Object -First 1  
           if (-not $exe) { Write-Error "YM2608ToneEditor.exe not found"; exit 1 }  
           Write-Output "Found binary at: $($exe.FullName)"  
-          Get-ChildItem -Path $env:QT_ROOT_DIR -Recurse -Filter qwindows.dll | Select-Object -ExpandProperty FullName  
-          Remove-Item Env:QT_PLUGIN_PATH -ErrorAction SilentlyContinue  
           New-Item -ItemType Directory -Path deploy -Force | Out-Null  
           Copy-Item $exe.FullName -Destination deploy  
-          windeployqt --release --no-translations "deploy\YM2608ToneEditor.exe"  
+          $qtBin = Split-Path (Get-Command windeployqt).Source -Parent  
+          $qtRoot = Split-Path $qtBin -Parent  
+          Write-Output "Qt bin: $qtBin"  
+          Write-Output "Qt root: $qtRoot"  
+          & (Get-Command windeployqt).Source --release --no-translations "deploy\YM2608ToneEditor.exe"  
+          Write-Output "windeployqt exit code: $LASTEXITCODE"  
+          Get-ChildItem $qtBin -Filter "Qt6*.dll" | Copy-Item -Destination deploy -Force  
+          $platformPlugin = Get-ChildItem -Path $qtRoot -Recurse -Filter qwindows.dll | Select-Object -First 1  
+          if (-not $platformPlugin) { Write-Error "qwindows.dll not found under $qtRoot"; exit 1 }  
+          Write-Output "Found platform plugin at: $($platformPlugin.FullName)"  
+          New-Item -ItemType Directory -Path deploy\platforms -Force | Out-Null  
+          Copy-Item $platformPlugin.FullName -Destination deploy\platforms -Force  
+          Get-ChildItem -Path deploy -Recurse | Select-Object -ExpandProperty FullName  
+          exit 0  
   
       - name: Package artifact  
         shell: pwsh  
